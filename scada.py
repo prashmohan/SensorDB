@@ -18,6 +18,40 @@ import os
 import time
 import datetime
 
+class DataRecord(object):
+    def __init__(self, date, timestamp, data):
+        st = time.strptime(date.strip() + ' ' + timestamp.strip(), '%Y-%m-%d %H:%M:%S')
+        self.ts = datetime.datetime(st.tm_year, st.tm_mon, st.tm_mday, \
+                                        st.tm_hour, st.tm_min, st.tm_sec)
+        self.data = data.strip()
+
+    def __cmp__(self, other):
+        if self.ts < other.ts:
+            return -1
+        elif self.ts == other.ts:
+            return 0
+        else:
+            return 1
+
+    def __repr__(self):
+        return str(self.ts) + '\t' + self.data
+
+    def __str__(self):
+        return repr(self)
+
+class DataCollection(object):
+    def __init__(self):
+        self.records = []
+
+    def append(self, record):
+        self.records.append(record)
+
+    def get_data(self):
+        return zip(*self.records)[1]
+
+    def get_ts(self):
+        return zip(*self.records)[0]
+    
 class TraceFile(object):
     def __init__(self, location):
         self.loc = location
@@ -31,6 +65,34 @@ class TraceFile(object):
     def get_date(self):
         return self.date
 
+    def get_data(self):
+        data = DataCollection()
+        for line in open(self.loc, 'r'):
+            parts = line.split(',')
+            data.append(DataRecord(parts[1], parts[2], parts[4]))
+        return data
+
+    def __repr__(self):
+        return 'Trace type: ' + os.path.dirname(self.loc) + '\tTrace Date: ' + str(self.date)
+
+    def __str__(self):
+        return repr(self)    
+
+class Name(object):
+    def __init__(self, name):
+        file_name = os.path.basename(name)
+        self.name = file_name
+        self.room_no = file_name[file_name.find('R') + 1 : file_name.find('_')]
+        self.floor = self.room_no[0] if len(self.room_no) > 0 else 'None'
+        self.type = file_name[file_name.rfind('_') + 1 : ]
+        self.prefix = file_name[ : file_name.find('R')]
+        
+    def __repr__(self):
+        return 'Prefix: ' + self.prefix + ', Type: ' + self.type + ', Room No: ' + self.room_no + ', Floor: '+ self.floor + ', Full Name: ' + self.name
+
+    def __str__(self):
+        return repr(self)         
+
 class Trace(object):
     def __init__(self, location):
         self.loc = location
@@ -43,22 +105,35 @@ class Trace(object):
                 continue
             self.trace_files.append(TraceFile(os.path.join(self.loc, file_name)))
             
+    def __repr__(self):
+        return repr(Name(self.loc))
+
     def get_name(self):
-        file_name = os.path.basename(location)
-        if file_name.find('_') != -1:
-            return file_name[ : file_name.rfind('_')]
-        return file_name
-        
+        return repr(self)
+
+    def __str__(self):
+        return repr(self)
+    
     def get_length(self):
         """Returns the trace length in months"""
         dates = [trace.get_date() for trace in self.trace_files]
         return ((max(dates) - min(dates)) / 30).days
         
     def get_type(self):
-        file_name = os.path.basename(location)
+        file_name = os.path.basename(self.loc)
         return file_name[file_name.rfind('_') + 1 : ]
-    
-        
+
+    def get_data(self, start_time = None, end_time = None):
+        data = []
+        for trace in self.trace_files:
+            if start_time and trace.get_date() < start_time:
+                continue
+            if end_time and trace.get_date() > end_time:
+                continue
+            data.extend(trace.get_data())
+        data.sort()
+        return data
+            
 class SodaTrace(object):
     def __init__(self, directory):
         self.dir = directory
@@ -74,6 +149,9 @@ class SodaTrace(object):
 
     def get_traces(self, type):
         return [trace for trace in self.traces if trace.get_type() == type]
+
+def get_datetime(year, month):
+    return datetime(year, month, 1)
         
 if __name__ == '__main__':
     pass
