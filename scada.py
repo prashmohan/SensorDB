@@ -17,13 +17,19 @@ import sys
 import os
 import time
 import datetime
+import clustering
+from pylab import *
 
 class DataRecord(object):
     def __init__(self, date, timestamp, data):
         st = time.strptime(date.strip() + ' ' + timestamp.strip(), '%Y-%m-%d %H:%M:%S')
         self.ts = datetime.datetime(st.tm_year, st.tm_mon, st.tm_mday, \
                                         st.tm_hour, st.tm_min, st.tm_sec)
-        self.data = data.strip()
+        try:
+            self.data = float(data.strip())
+        except:
+            print 'Error', data, date, timestamp
+            raise
 
     def __cmp__(self, other):
         if self.ts < other.ts:
@@ -47,10 +53,16 @@ class DataCollection(object):
         self.records.append(record)
 
     def get_data(self):
-        return zip(*self.records)[1]
+        return [rec.data for rec in self.records]
 
     def get_ts(self):
-        return zip(*self.records)[0]
+        return [rec.ts for rec in self.records]
+
+    def extend(self, col):
+        self.records.extend(col.records)
+
+    def sort(self):
+        self.records.sort()
     
 class TraceFile(object):
     def __init__(self, location):
@@ -61,6 +73,7 @@ class TraceFile(object):
         file_name = os.path.basename(self.loc)
         date_str = file_name[file_name.rfind('$') + 1 : file_name.rfind('H')]
         self.date = datetime.datetime(int(date_str[:4]), int(date_str[-2:]), 1)
+        self.data_cache = None
         
     def get_date(self):
         return self.date
@@ -109,7 +122,7 @@ class Trace(object):
         return repr(Name(self.loc))
 
     def get_name(self):
-        return repr(self)
+        return Name(self.loc)
 
     def __str__(self):
         return repr(self)
@@ -121,10 +134,13 @@ class Trace(object):
         
     def get_type(self):
         file_name = os.path.basename(self.loc)
-        return file_name[file_name.rfind('_') + 1 : ]
+        type = file_name[file_name.rfind('_') + 1 : ]
+        while len(type) > 0 and str.isdigit(type[0]):
+            type = type[1:]
+        return type        
 
     def get_data(self, start_time = None, end_time = None):
-        data = []
+        data = DataCollection()
         for trace in self.trace_files:
             if start_time and trace.get_date() < start_time:
                 continue
@@ -150,8 +166,32 @@ class SodaTrace(object):
     def get_traces(self, type):
         return [trace for trace in self.traces if trace.get_type() == type]
 
+    def get_sensor_names(self):
+        return [trace.get_name() for trace in self.traces]
+
 def get_datetime(year, month):
     return datetime(year, month, 1)
-        
+
+def get_data(data):
+    return map(clustering.conv_time, data.get_data().get_ts()), data.get_data().get_data()
+
+def clean_name(name):
+    return name.replace('_', '')
+
+def write_data_to_file(data, data_file, field_file):
+    f_fields = open(field_file, 'w')
+    f_fields.write('\n'.join([d.get_name().name for d in data]))
+    f_fields.close()
+
+    f_data = open(data_file, 'w')
+    data_data = [get_data(d) for d in data]
+    x_vals, y_vals = clustering.interpolate(data_data, sampling_freq=600)
+    out_data = [x_vals]
+    out_data.extend(y_vals)
+
+    for index in range(len(out_data[0])):
+        f_data.write('\t'.join([str(x[index]) for x in out_data]) + '\n')
+    f_data.close()
+    
 if __name__ == '__main__':
     pass
