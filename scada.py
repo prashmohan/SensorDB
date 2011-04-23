@@ -178,20 +178,61 @@ def get_data(data):
 def clean_name(name):
     return name.replace('_', '')
 
+def get_multid_data(data):
+    data_data = [get_data(d) for d in data]
+    x_vals, y_vals = clustering.interpolate(data_data, sampling_freq=3600)
+    # out_data = [x_vals]
+    out_data = y_vals
+    ret_data = []
+
+    for index in range(len(out_data[0])):
+        found_nan = False
+        for x in out_data:
+            if isnan(x[index]):
+                found_nan = True
+                break
+        if found_nan:
+            continue
+        ret_data.append([x[index] for x in out_data])
+    return ret_data
+    
+
 def write_data_to_file(data, data_file, field_file):
     f_fields = open(field_file, 'w')
     f_fields.write('\n'.join([d.get_name().name for d in data]))
     f_fields.close()
-
+    
     f_data = open(data_file, 'w')
-    data_data = [get_data(d) for d in data]
-    x_vals, y_vals = clustering.interpolate(data_data, sampling_freq=600)
-    out_data = [x_vals]
-    out_data.extend(y_vals)
-
-    for index in range(len(out_data[0])):
-        f_data.write('\t'.join([str(x[index]) for x in out_data]) + '\n')
+    data_data = get_multid_data(data)
+    for entry in data_data:
+        f_data.write('\t'.join([str(x[index]) for x in entry]) + '\n')
     f_data.close()
+
+    # data_data = [get_data(d) for d in data]
+    # x_vals, y_vals = clustering.interpolate(data_data, sampling_freq=3600)
+    # out_data = [x_vals]
+    # out_data.extend(y_vals)
+
+    # for index in range(len(out_data[0])):
+    #     found_nan = False
+    #     for x in out_data:
+    #         if isnan(x[index]):
+    #             found_nan = True
+    #             break
+    #     if found_nan:
+    #         continue
+        
+    #     f_data.write('\t'.join([str(x[index]) for x in out_data]) + '\n')
+    # f_data.close()
+
+def enum(data):
+    for i, x in enumerate(data):
+        print i, x.get_name().name
+
+def get_chiler_traces(trace):
+    sensors = ['SODC1C1____SWT', 'SODC1C1__CDRWT', 'SODC1C2____SWT', 'SODC1C2__CDRWT', 'SODC1S_____SWT', 'SODC1S_____RWT', 'SODC1C1_____KW', 'SODC1C2_____KW']
+    return [t for t in trace.traces if t.get_name().name in sensors]
+
     
 if __name__ == '__main__':
     pass
