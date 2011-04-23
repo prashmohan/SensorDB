@@ -4,6 +4,7 @@ import scipy.spatial.distance as dist
 import scipy.cluster.hierarchy as hier
 import scipy.interpolate
 from time import mktime
+import types
 
 COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
 
@@ -30,11 +31,33 @@ def plot_data(data, buckets=5):
             break
         print 'Plotting color', color
         plot(data_plot[index][0], data_plot[index][1], color=color, marker='o', linestyle='None')
-    
+
+def get_data(data):
+    return map(conv_time, data.get_data().get_ts()), data.get_data().get_data()
+
+def get_multid_data(data):
+    data_data = [get_data(d) for d in data]
+    x_vals, y_vals = interpolate(data_data, sampling_freq=3600)
+    out_data = y_vals
+    ret_data = []
+
+    for index in range(len(out_data[0])):
+        found_nan = False
+        for x in out_data:
+            if isnan(x[index]):
+                found_nan = True
+                break
+        if found_nan:
+            continue
+        ret_data.append([x[index] for x in out_data])
+    return ret_data
 
 def hier_cluster(data):
-    new_data = get_clean(data)
-    new_data = array([array([1, x]) for x in new_data])
+    if type(data) != types.ListType and type(data) != type(array([])):
+        new_data = get_clean(data)
+        new_data = array([array([1, x]) for x in new_data])
+    else:
+        new_data = get_multid_data(data)
     d = dist.pdist(new_data)
     return hier.linkage(d)
 
@@ -47,7 +70,6 @@ def interpolate(signals, sampling_freq=1):
     for signal in signals:
         start_time = max(start_time, min(signal[0]))
         stop_time = min(stop_time, max(signal[0]))
-
         interpols.append(scipy.interpolate.interp1d(signal[0], signal[1]))
 
     x_new = range(start_time, stop_time, sampling_freq)

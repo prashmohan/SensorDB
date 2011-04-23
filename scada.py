@@ -46,18 +46,25 @@ class DataRecord(object):
         return repr(self)
 
 class DataCollection(object):
-    def __init__(self):
+    def __init__(self, limit=None):
         self.records = []
+        self.limit = limit
 
     def append(self, record):
         self.records.append(record)
 
     def get_data(self):
-        return [rec.data for rec in self.records]
+        if not self.limit:
+            return [rec.data for rec in self.records]
+        else:
+            return [rec.data for rec in self.records[:self.limit]]
 
     def get_ts(self):
-        return [rec.ts for rec in self.records]
-
+        if not self.limit:
+            return [rec.ts for rec in self.records]
+        else:
+            return [rec.ts for rec in self.records[:self.limit]]
+        
     def extend(self, col):
         self.records.extend(col.records)
 
@@ -107,10 +114,11 @@ class Name(object):
         return repr(self)         
 
 class Trace(object):
-    def __init__(self, location):
+    def __init__(self, location, limit=None):
         self.loc = location
         self.trace_files = []
         self.initialize()
+        self.limit = limit
     
     def initialize(self):
         for file_name in os.listdir(self.loc):
@@ -140,7 +148,7 @@ class Trace(object):
         return type        
 
     def get_data(self, start_time = None, end_time = None):
-        data = DataCollection()
+        data = DataCollection(self.limit)
         for trace in self.trace_files:
             if start_time and trace.get_date() < start_time:
                 continue
@@ -151,14 +159,15 @@ class Trace(object):
         return data
             
 class SodaTrace(object):
-    def __init__(self, directory):
+    def __init__(self, directory, limit=None):
         self.dir = directory
         self.traces = []
+        self.limit = limit
         self.initialize()
         
     def initialize(self):
         for obj_name in os.listdir(self.dir):
-            self.traces.append(Trace(os.path.join(self.dir, obj_name)))
+            self.traces.append(Trace(os.path.join(self.dir, obj_name), self.limit))
 
     def get_trace_types(self):
         return set([trace.get_type() for trace in self.traces])
@@ -166,36 +175,20 @@ class SodaTrace(object):
     def get_traces(self, type):
         return [trace for trace in self.traces if trace.get_type() == type]
 
+    def get_trace(self, sensor_name):
+        for trace in self.traces:
+            if trace.get_name().name == sensor_name:
+                return trace
+
     def get_sensor_names(self):
         return [trace.get_name() for trace in self.traces]
 
 def get_datetime(year, month):
     return datetime(year, month, 1)
 
-def get_data(data):
-    return map(clustering.conv_time, data.get_data().get_ts()), data.get_data().get_data()
-
 def clean_name(name):
     return name.replace('_', '')
 
-def get_multid_data(data):
-    data_data = [get_data(d) for d in data]
-    x_vals, y_vals = clustering.interpolate(data_data, sampling_freq=3600)
-    # out_data = [x_vals]
-    out_data = y_vals
-    ret_data = []
-
-    for index in range(len(out_data[0])):
-        found_nan = False
-        for x in out_data:
-            if isnan(x[index]):
-                found_nan = True
-                break
-        if found_nan:
-            continue
-        ret_data.append([x[index] for x in out_data])
-    return ret_data
-    
 
 def write_data_to_file(data, data_file, field_file):
     f_fields = open(field_file, 'w')
@@ -203,7 +196,7 @@ def write_data_to_file(data, data_file, field_file):
     f_fields.close()
     
     f_data = open(data_file, 'w')
-    data_data = get_multid_data(data)
+    data_data = clustering.get_multid_data(data)
     for entry in data_data:
         f_data.write('\t'.join([str(x[index]) for x in entry]) + '\n')
     f_data.close()
@@ -230,7 +223,7 @@ def enum(data):
         print i, x.get_name().name
 
 def get_chiler_traces(trace):
-    sensors = ['SODC1C1____SWT', 'SODC1C1__CDRWT', 'SODC1C2____SWT', 'SODC1C2__CDRWT', 'SODC1S_____SWT', 'SODC1S_____RWT', 'SODC1C1_____KW', 'SODC1C2_____KW']
+    sensors = ['SODC1C1____SWT', 'SODC1C1__CDRWT', 'SODC1C2____SWT', 'SODC1C2__CDRWT', 'SODC1S_____SWT', 'SODC1S_____RWT', 'SODC1C1_____KW', 'SODC1C2_____KW', 'SODC2______SWT', 'SODC1C2____SWS']
     return [t for t in trace.traces if t.get_name().name in sensors]
 
     
