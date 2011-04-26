@@ -223,8 +223,9 @@ def enum(data):
         print i, x.get_name().name
 
 def get_chiler_traces(trace):
-    sensors = ['SODC1C1____SWT', 'SODC1C1__CDRWT', 'SODC1C2____SWT', 'SODC1C2__CDRWT', 'SODC1S_____SWT', 'SODC1S_____RWT', 'SODC1C1_____KW', 'SODC1C2_____KW', 'SODC2______SWT', 'SODC1C2____SWS']
-    return [t for t in trace.traces if t.get_name().name in sensors]
+    temp_sensors = ['SODC1C1____SWT', 'SODC1C1__CDRWT', 'SODC1C2____SWT', 'SODC1C2__CDRWT', 'SODC1S_____SWT', 'SODC1S_____RWT', 'SODC2______SWT', 'SODC1C2____SWS']
+    kw_sensors = ['SODC1C1_____KW', 'SODC1C2_____KW']
+    return [t for t in trace.traces if t.get_name().name in temp_sensors], [t for t in trace.traces if t.get_name().name in kw_sensors]
 
     
 if __name__ == '__main__':

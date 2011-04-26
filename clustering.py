@@ -1,5 +1,5 @@
 from pylab import *
-from scipy.cluster.vq import vq, kmeans2
+from scipy.cluster.vq import vq, kmeans2, whiten
 import scipy.spatial.distance as dist
 import scipy.cluster.hierarchy as hier
 import scipy.interpolate
@@ -12,17 +12,21 @@ def get_clean(data):
     return [x for x in data if not isnan(x)]
 
 def cluster(data, buckets=5):
-    new_data = array(get_clean(data))
-    c, l = kmeans2(new_data, buckets, minit='random')
-    x_indices = array(range(len(new_data)))
-    ret_vals = []
-    for index, color in enumerate(COLORS):
-        if index >= buckets:
-            break
+    if type(data) != types.ListType and type(data) != type(array([])):
+        new_data = array(get_clean(data))
+    else:
+        new_data = get_multid_data(data)
+    new_data = whiten(new_data)
+    c, l = kmeans2(new_data, buckets)
+    # x_indices = array(range(len(new_data)))
+    # ret_vals = []
+    # for index, color in enumerate(COLORS):
+    #     if index >= buckets:
+    #         break
 
-        indices = find(l == index)
-        ret_vals.append((x_indices[indices], new_data[indices],))
-    return ret_vals
+    #     indices = find(l == index)
+    #     ret_vals.append((x_indices[indices], new_data[indices],))
+    return c, l
 
 def plot_data(data, buckets=5):
     data_plot = cluster(data, buckets)
@@ -30,10 +34,15 @@ def plot_data(data, buckets=5):
         if index >= buckets:
             break
         print 'Plotting color', color
-        plot(data_plot[index][0], data_plot[index][1], color=color, marker='o', linestyle='None')
+        plot(data_plot[index][0], data_plot[index][1], \
+                 color=color, marker='o', linestyle='None')
 
-def get_data(data):
-    return map(conv_time, data.get_data().get_ts()), data.get_data().get_data()
+def get_data(data, normalize=True):
+    ts = array(map(conv_time, data.get_data().get_ts()))
+    if normalize:
+        return ts - min(ts), data.get_data().get_data()
+    else:
+        return ts, data.get_data().get_data()
 
 def get_multid_data(data):
     data_data = [get_data(d) for d in data]
