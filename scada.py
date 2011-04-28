@@ -46,24 +46,25 @@ class DataRecord(object):
         return repr(self)
 
 class DataCollection(object):
-    def __init__(self, limit=None):
+    def __init__(self, start_limit=None, stop_limit=None):
         self.records = []
-        self.limit = limit
+        self.start_limit = start_limit
+        self.stop_limit = stop_limit
 
     def append(self, record):
         self.records.append(record)
 
     def get_data(self):
-        if not self.limit:
-            return [rec.data for rec in self.records]
-        else:
-            return [rec.data for rec in self.records[:self.limit]]
+        # if not self.start_limit:
+        #     return [rec.data for rec in self.records]
+        # else:
+        return [rec.data for rec in self.records[self.start_limit : self.stop_limit]]
 
     def get_ts(self):
-        if not self.limit:
-            return [rec.ts for rec in self.records]
-        else:
-            return [rec.ts for rec in self.records[:self.limit]]
+        # if not self.limit:
+        #     return [rec.ts for rec in self.records]
+        # else:
+        return [rec.ts for rec in self.records[self.start_limit : self.stop_limit]]
         
     def extend(self, col):
         self.records.extend(col.records)
@@ -114,11 +115,12 @@ class Name(object):
         return repr(self)         
 
 class Trace(object):
-    def __init__(self, location, limit=None):
+    def __init__(self, location, start_limit=None, stop_limit=None):
         self.loc = location
         self.trace_files = []
         self.initialize()
-        self.limit = limit
+        self.start_limit = start_limit
+        self.stop_limit = stop_limit
     
     def initialize(self):
         for file_name in os.listdir(self.loc):
@@ -148,7 +150,7 @@ class Trace(object):
         return type        
 
     def get_data(self, start_time = None, end_time = None):
-        data = DataCollection(self.limit)
+        data = DataCollection(self.start_limit, self.stop_limit)
         for trace in self.trace_files:
             if start_time and trace.get_date() < start_time:
                 continue
@@ -159,15 +161,18 @@ class Trace(object):
         return data
             
 class SodaTrace(object):
-    def __init__(self, directory, limit=None):
+    def __init__(self, directory, start_limit=None, stop_limit=None):
         self.dir = directory
         self.traces = []
-        self.limit = limit
+        self.start_limit = start_limit
+        self.stop_limit = stop_limit
+        if self.start_limit and not self.stop_limit:
+            raise Exception("Incorrect parameters. Cannot give only 1 limit parameter")
         self.initialize()
         
     def initialize(self):
         for obj_name in os.listdir(self.dir):
-            self.traces.append(Trace(os.path.join(self.dir, obj_name), self.limit))
+            self.traces.append(Trace(os.path.join(self.dir, obj_name), self.start_limit, self.stop_limit))
 
     def get_trace_types(self):
         return set([trace.get_type() for trace in self.traces])
