@@ -4,6 +4,7 @@ import scipy.spatial.distance as dist
 import scipy.cluster.hierarchy as hier
 import scipy.interpolate
 from time import mktime
+import fastcluster
 import types
 
 COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
@@ -63,13 +64,12 @@ def get_multid_data(data):
 
 def hier_cluster(data):
     if type(data) != types.ListType and type(data) != type(array([])):
-        new_data = get_clean(data)
-        new_data = array([array([1, x]) for x in new_data])
+        trans_data = get_clean(data)
+        trans_data = array([array([1, x]) for x in new_data])
     else:
-        new_data = get_multid_data(data)
-    d = dist.pdist(new_data)
-    return hier.linkage(d)
-
+        trans_data = get_multid_data(data)
+    d = dist.pdist(trans_data)
+    return trans_data, fastcluster.linkage(d, method='centroid')
 
 def interpolate(signals, sampling_freq=1):
     start_time = min(signals[0][0])

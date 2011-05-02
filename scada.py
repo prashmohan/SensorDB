@@ -166,8 +166,6 @@ class SodaTrace(object):
         self.traces = []
         self.start_limit = start_limit
         self.stop_limit = stop_limit
-        if self.start_limit and not self.stop_limit:
-            raise Exception("Incorrect parameters. Cannot give only 1 limit parameter")
         self.initialize()
         
     def initialize(self):
@@ -193,7 +191,6 @@ def get_datetime(year, month):
 
 def clean_name(name):
     return name.replace('_', '')
-
 
 def write_data_to_file(data, data_file, field_file):
     f_fields = open(field_file, 'w')
@@ -234,4 +231,34 @@ def get_chiler_traces(trace):
 
     
 if __name__ == '__main__':
-    pass
+    training_data = {}
+    for month in range(MONTH_LIMIT):
+        start_limit = int(month * 30 * 24)
+        stop_limit = int((month + 1) * 30 * 24)
+        get_anomolies(start_limit, stop_limit)
+
+def get_anomolies(start_limit, stop_limit):
+    trace = SodaTrace('UCProject_UCB_SODAHALL', start_limit, stop_limit)
+    if len(trace.traces[-1].get_data().get_data()) == 0:
+        break
+    art4 = [art for art in trace.traces if art.get_name().name.endswith('ART') and art.get_name().name.find('R4') != -1]
+    multid_data, clust = clustering.hier_cluster(art4)
+    percentile_95 = sort(clust[:,2])
+    percentile_95 = percentile_95[len(percentile_95) * 95 / 100]
+    d = clustering.hier.dendrogram(clust,
+                                   color_threshold=0.7 * percentile_95,
+                                   no_plot=True)
+    subplot(211)
+    for art in art4:
+        plot(map(clustering.get_clean, art.get_data().get_data()))
+        
+    subplot(212)
+    y_len = 1
+    for color in set(d['color_list']):
+        x_vals = array(d['leaves'])[find(array(d['color_list']) == color)]
+        y_vals = [y_len] * len(x_vals)
+        y_len += 1
+        scatter(x_vals, y_vals, c=color)
+        
+
+        
