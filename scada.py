@@ -235,12 +235,15 @@ if __name__ == '__main__':
     for month in range(MONTH_LIMIT):
         start_limit = int(month * 30 * 24)
         stop_limit = int((month + 1) * 30 * 24)
-        get_anomolies(start_limit, stop_limit)
+        try:
+            get_anomolies(start_limit, stop_limit)
+        except:
+            break
 
 def get_anomolies(start_limit, stop_limit):
     trace = SodaTrace('UCProject_UCB_SODAHALL', start_limit, stop_limit)
     if len(trace.traces[-1].get_data().get_data()) == 0:
-        break
+        raise Exception("No more data")
     art4 = [art for art in trace.traces if art.get_name().name.endswith('ART') and art.get_name().name.find('R4') != -1]
     multid_data, clust = clustering.hier_cluster(art4)
     percentile_95 = sort(clust[:,2])
