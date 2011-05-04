@@ -16,6 +16,7 @@ License: Licensed under the CRAPL non-license -
 import sys
 import os
 import time
+import math
 import datetime
 import clustering
 from pylab import *
@@ -240,20 +241,24 @@ if __name__ == '__main__':
         except:
             break
 
-def get_anomolies(start_limit, stop_limit):
+def get_anomolies(start_limit, stop_limit, limit_percentile=0.95, dist_threshold=0.7):
     trace = SodaTrace('UCProject_UCB_SODAHALL', start_limit, stop_limit)
     if len(trace.traces[-1].get_data().get_data()) == 0:
         raise Exception("No more data")
-    art4 = [art for art in trace.traces if art.get_name().name.endswith('ART') and art.get_name().name.find('R4') != -1]
+    art4 = [art for art in trace.traces if art.get_name().name.endswith('ART') and art.get_name().name.find('R4') != -1 and art.get_name().name != 'SODA1R438__ART']
     multid_data, clust = clustering.hier_cluster(art4)
-    percentile_95 = sort(clust[:,2])
-    percentile_95 = percentile_95[len(percentile_95) * 95 / 100]
+    percentile = sort(clust[:,2])
+    percentile = percentile[int(len(percentile) * limit_percentile)]
     d = clustering.hier.dendrogram(clust,
-                                   color_threshold=0.7 * percentile_95,
+                                   color_threshold = dist_threshold * percentile,
                                    no_plot=True)
+    # c, l = clustering.kmeans_cluster(art4, 3)
+    
     subplot(211)
     for art in art4:
-        plot(map(clustering.get_clean, art.get_data().get_data()))
+        plot(clustering.get_clean(art.get_data().get_data()))
+
+    xlim(0, stop_limit - start_limit)
         
     subplot(212)
     y_len = 1
@@ -262,6 +267,75 @@ def get_anomolies(start_limit, stop_limit):
         y_vals = [y_len] * len(x_vals)
         y_len += 1
         scatter(x_vals, y_vals, c=color)
-        
+    # scatter (range(len(l)), 1 + array(l))
+    xlim(0, stop_limit - start_limit)
+    ylim(0, y_len)
+    # ylim(-1, len(c) + 1)
+    
+def euclidean_dist(pt1, pt2):
+    total = 0
+    for index in range(len(pt1)):
+        total += (pt2[index] - pt1[index]) ** 2
+    return math.sqrt(total) 
 
-        
+def plot_mean_anomoly(data, wnd_size=24):
+    clf()
+    subplot(411)
+    title('Data')
+    for x in data:
+        plot(clustering.get_clean(x.get_data().get_data()))
+    subplot(412)
+    cdv, odv, an = mean_anomoly(data, wnd_size)
+    scatter(an, [1] * len(an))
+    xlim(0, len(data[0].get_data().get_data()))
+    title('Anomolies')
+    subplot(413)
+    plot(cdv, label='Distance from Moving Window Mean')
+    legend()
+    subplot(414)
+    plot(odv, label='Distance from Overall Mean')
+    legend()
+
+def mean_anomoly(data, wnd_size):
+    overall_dist_vals = [0] * wnd_size
+    cur_dist_vals = [0] * wnd_size
+    anomolies = []
+    cur_win = []
+    cur_means = []
+    multid_data = clustering.get_multid_data(data)
+    total = array([0.0] * len(data))
+    start_time = time.time()
+    overall_mean = [average(clustering.get_clean(x.get_data().get_data())) for x in data]
+    print 'Time to calculate overall average', time.time() - start_time
+
+    for pt_index, cur_pt in enumerate(multid_data):
+        mean_pt = total / wnd_size
+        cur_means.append(mean_pt)
+        dist = map(lambda pt: euclidean_dist(mean_pt, pt),
+                   cur_win)
+        sigma = std(dist)
+        mean = average(dist)
+        if len(cur_win) >= wnd_size:
+            for index in range(len(total)):
+                total[index] -= cur_win[0][index]
+            del cur_win[0]
+        for index in range(len(cur_pt)):
+            total[index] += cur_pt[index]
+
+        cur_win.append(cur_pt)
+        # print 10 * '-'
+        # print 'Current Pt', cur_pt
+        # print 'Total', total
+        # print 'Mean Pt', mean_pt
+        # raw_input()
+        if len(cur_win) < wnd_size:
+            continue
+
+        cur_pt_dist = euclidean_dist(mean_pt, cur_pt)
+        cur_dist_vals.append(cur_pt_dist)
+        overall_dist_vals.append(euclidean_dist(overall_mean, cur_pt))
+
+        if cur_pt_dist < mean - 4 * sigma or \
+                cur_pt_dist > mean + 4 * sigma:
+            anomolies.append(pt_index)
+    return cur_dist_vals, overall_dist_vals, anomolies

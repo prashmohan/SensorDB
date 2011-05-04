@@ -12,13 +12,13 @@ COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
 def get_clean(data):
     return [x for x in data if not isnan(x)]
 
-def cluster(data, buckets=5):
+def kmeans_cluster(data, buckets=5):
     if type(data) != types.ListType and type(data) != type(array([])):
         new_data = array(get_clean(data))
     else:
         new_data = get_multid_data(data)
     new_data = whiten(new_data)
-    c, l = kmeans2(new_data, buckets)
+    c, l = kmeans2(new_data, buckets, minit='random')
     # x_indices = array(range(len(new_data)))
     # ret_vals = []
     # for index, color in enumerate(COLORS):
