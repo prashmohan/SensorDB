@@ -20,59 +20,56 @@ import math
 import datetime
 import clustering
 from pylab import *
+from common import DataRecord, DataCollection, Name
+import httplib
+import logging
+import logging.handlers
 
-class DataRecord(object):
-    def __init__(self, date, timestamp, data):
-        st = time.strptime(date.strip() + ' ' + timestamp.strip(), '%Y-%m-%d %H:%M:%S')
-        self.ts = datetime.datetime(st.tm_year, st.tm_mon, st.tm_mday, \
-                                        st.tm_hour, st.tm_min, st.tm_sec)
-        try:
-            self.data = float(data.strip())
-        except:
-            print 'Error', data, date, timestamp
-            raise
+# Log verbosely
+root_logger = logging.getLogger('')
+root_logger.setLevel(logging.DEBUG)
 
-    def __cmp__(self, other):
-        if self.ts < other.ts:
-            return -1
-        elif self.ts == other.ts:
-            return 0
-        else:
-            return 1
+# Logger console output
+# console = logging.StreamHandler(sys.stderr)
+# console_format = '%(message)s'
+# console.setFormatter(logging.Formatter(console_format))
+# console.setLevel(logging.INFO)
+# root_logger.addHandler(console)
 
-    def __repr__(self):
-        return str(self.ts) + '\t' + self.data
+# Traceback handlers
+traceback_log = logging.getLogger('traceback')
+traceback_log.propogate = False
+traceback_log.setLevel(logging.ERROR)
 
-    def __str__(self):
-        return repr(self)
+if __name__ == '__main__':
+    # Logger file output
+    file_handler = logging.handlers.RotatingFileHandler(sys.argv[0] + '.log', )
+    file_format = '%(asctime)s %(levelname)6s %(name)s %(message)s'
+    file_handler.setFormatter(logging.Formatter(file_format))
+    file_handler.setLevel(logging.DEBUG)
+    root_logger.addHandler(file_handler)
+    traceback_log.addHandler(file_handler)
 
-class DataCollection(object):
-    def __init__(self, start_limit=None, stop_limit=None):
-        self.records = []
-        self.start_limit = start_limit
-        self.stop_limit = stop_limit
 
-    def append(self, record):
-        self.records.append(record)
+def handle_errors(exc_type, exc_value, traceback):
+    logging.getLogger(__name__).error(exc_value)
+    logging.getLogger('traceback').error(
+        exc_value,
+        exc_info=(exc_type, exc_value, traceback),
+        )
+sys.excepthook = handle_errors
 
-    def get_data(self):
-        # if not self.start_limit:
-        #     return [rec.data for rec in self.records]
-        # else:
-        return [rec.data for rec in self.records[self.start_limit : self.stop_limit]]
+log = logging.getLogger(__name__)
 
-    def get_ts(self):
-        # if not self.limit:
-        #     return [rec.ts for rec in self.records]
-        # else:
-        return [rec.ts for rec in self.records[self.start_limit : self.stop_limit]]
-        
-    def extend(self, col):
-        self.records.extend(col.records)
 
-    def sort(self):
-        self.records.sort()
-    
+class SCADAException(Exception):
+    pass
+
+
+class TSDBException(SCADAException):
+    pass
+
+
 class TraceFile(object):
     def __init__(self, location):
         self.loc = location
@@ -91,101 +88,186 @@ class TraceFile(object):
         data = DataCollection()
         for line in open(self.loc, 'r'):
             parts = line.split(',')
-            data.append(DataRecord(parts[1], parts[2], parts[4]))
+            data.append(DataRecord(parts[4], parts[1], parts[2]))
         return data
 
     def __repr__(self):
-        return 'Trace type: ' + os.path.dirname(self.loc) + '\tTrace Date: ' + str(self.date)
+        return 'Trace type: ' + os.path.dirname(self.loc) + \
+            '\tTrace Date: ' + str(self.date)
 
     def __str__(self):
         return repr(self)    
 
-class Name(object):
-    def __init__(self, name):
-        file_name = os.path.basename(name)
-        self.name = file_name
-        self.room_no = file_name[file_name.find('R') + 1 : file_name.find('_')]
-        self.floor = self.room_no[0] if len(self.room_no) > 0 else 'None'
-        self.type = file_name[file_name.rfind('_') + 1 : ]
-        self.prefix = file_name[ : file_name.find('R')]
-        
-    def __repr__(self):
-        return 'Prefix: ' + self.prefix + ', Type: ' + self.type + ', Room No: ' + self.room_no + ', Floor: '+ self.floor + ', Full Name: ' + self.name
 
-    def __str__(self):
-        return repr(self)         
-
-class Trace(object):
-    def __init__(self, location, start_limit=None, stop_limit=None):
-        self.loc = location
-        self.trace_files = []
-        self.initialize()
+class SensorTrace(object):
+    def __init__(self, sensor_name, start_limit=None, stop_limit=None):
+        self.name = sensor_name
+        self.trace_data = DataCollection(start_limit, stop_limit)
         self.start_limit = start_limit
         self.stop_limit = stop_limit
-    
+        self.initialize()
+
     def initialize(self):
-        for file_name in os.listdir(self.loc):
-            if not file_name.endswith('H.DAT.csv'): # Ignore the 'M' files
-                continue
-            self.trace_files.append(TraceFile(os.path.join(self.loc, file_name)))
-            
+        pass
+
     def __repr__(self):
-        return repr(Name(self.loc))
+        return repr(Name(self.name))
 
     def get_name(self):
-        return Name(self.loc)
+        return Name(self.name)
+
+    def get_type(self):
+        return self.get_name().type
 
     def __str__(self):
         return repr(self)
+
+    def get_length(self):
+        """Returns the length of the trace as a timedelta object"""
+        return self.trace_data.get_length()
+
+    def get_data_tuples(self, start_limit=None, stop_limit=None):
+        """Retrieve data and timestamps from the data collection.
+
+        start_limit and stop_limit are optional arguments that
+        describe the subsection of the trace to operate on. If these
+        options are not provided, then any arguments provided on
+        object intialization will be used."""
+        
+        data = self.load_data(start_limit, stop_limit)
+        self.trace_data = DataCollection(self.start_limit, self.stop_limit)
+        self.trace_data.append(data)
+        return self.trace_data.get_data_tuples(start_limit, stop_limit)
+
+    def get_data_collection(self):
+        return self.trace_data
+
+    def load_data(self, start_limit=None, stop_limit=None):
+        log.warn('Empty load data is called. This should typically not happen')
+        pass
+
+
+class TSDBTrace(SensorTrace):
+    TIME_FORMAT = '%Y/%m/%d-%H:%M:%S'
     
+    def __init__(self, loc, sensor_name, start_limit=None, stop_limit=None):
+        self.loc = loc
+        super(TSDBTrace, self).__init__(sensor_name,
+                                          start_limit,
+                                          stop_limit)
+
+    
+    def load_data(self, start_limit=None, stop_limit=None):
+        if not start_limit:
+            start_limit = self.start_limit
+        if not stop_limit:
+            stop_limit = self.stop_limit
+
+        if not start_limit:
+            raise TSDBException("Starting time should be given")
+        
+        request_string = '/q?start=' + start_limit.strftime(self.TIME_FORMAT)
+        if stop_limit:
+            request_string += '&stop=' + stop_limit.strftime(self.TIME_FORMAT)
+        request_string += '&m=avg:SCADA.SODA.' + self.name
+        request_string += '&ascii'
+
+        conn = httplib.HTTPConnection(self.loc)
+        conn.request("GET", request_string)
+        response = conn.getresponse()
+        if response.status != 200:
+            raise TSDBException("Could not load Sensor Data: " + self.name + "\nError: " + response.reason)
+        
+        return self.__parse_data(response.read())
+        
+
+    def __parse_data(self, data):
+        return [DataRecord(line.split()[2], int(line.split()[1])) \
+                    for line in data.splitlines()]
+
+                                
+class FileTrace(SensorTrace):
+    def __init__(self, loc, start_limit=None, stop_limit=None):
+        self.loc = loc
+        self.trace_files = []
+        super(FileTrace, self).__init__(os.path.basename(loc),
+                                        start_limit,
+                                        stop_limit)
+        
+    def initialize(self):
+        self.trace_files = [TraceFile(os.path.join(self.loc, file_name)) \
+                                for file_name in os.listdir(self.loc) \
+                                if file_name.endswith('H.DAT.csv')]
+        # Ignore the Monthly aggregates
+            
     def get_length(self):
         """Returns the trace length in months"""
         dates = [trace.get_date() for trace in self.trace_files]
         return ((max(dates) - min(dates)) / 30).days
-        
-    def get_type(self):
-        file_name = os.path.basename(self.loc)
-        type = file_name[file_name.rfind('_') + 1 : ]
-        while len(type) > 0 and str.isdigit(type[0]):
-            type = type[1:]
-        return type        
 
-    def get_data(self, start_time = None, end_time = None):
-        data = DataCollection(self.start_limit, self.stop_limit)
+    def load_data(self, start_limit=None, stop_limit=None):
+        return_records = DataCollection()
         for trace in self.trace_files:
-            if start_time and trace.get_date() < start_time:
+            log.info("Loading file: " + trace.loc)
+            if start_limit and trace.get_date() < start_limit:
                 continue
-            if end_time and trace.get_date() > end_time:
+            if stop_limit and trace.get_date() > stop_limit:
                 continue
-            data.extend(trace.get_data())
-        data.sort()
-        return data
-            
-class SodaTrace(object):
-    def __init__(self, directory, start_limit=None, stop_limit=None):
-        self.dir = directory
+            return_records.append(trace.get_data())
+        return return_records
+
+
+class SCADATrace(object):
+    """Access SCADA Sensor data from various sources"""
+    def __init__(self, location='ec2-50-18-26-188.us-west-1.compute.amazonaws.com:4242', start_limit=None, stop_limit=None):
         self.traces = []
         self.start_limit = start_limit
         self.stop_limit = stop_limit
-        self.initialize()
         
-    def initialize(self):
-        for obj_name in os.listdir(self.dir):
-            self.traces.append(Trace(os.path.join(self.dir, obj_name), self.start_limit, self.stop_limit))
+        if location.find('4242') != -1:
+            self.__tsdb_trace_initialize(location)
+        else:
+            self.__file_trace_initialize(location)        
 
-    def get_trace_types(self):
+    def __tsdb_trace_initialize(self, location):
+        self.traces = [TSDBTrace(location, sensor_name) \
+                           for sensor_name in self.__get_tsdb_metrics(location)]
+        
+    def __file_trace_initialize(self, directory):
+        self.traces = [FileTrace(os.path.join(directory, sensor_name),
+                                   self.start_limit, self.stop_limit) \
+                           for sensor_name in os.listdir(directory)]
+
+    def __get_tsdb_metrics(self, location):
+        request_string = '/suggest?type=metrics&q=SCADA.SODA'
+        conn = httplib.HTTPConnection(location)
+        conn.request("GET", request_string)
+        response = conn.getresponse()
+        if response.status != 200:
+            raise TSDBException("Could not load Sensor Names.\nError: " + response.reason)
+        data = response.read()
+        return [sensor[sensor.rfind('.') + 1 : ] for sensor in eval(data)]
+
+    def get_sensor_types(self):
+        """Returns the different types of sensors in the Trace"""
         return set([trace.get_type() for trace in self.traces])
 
     def get_traces(self, type):
-        return [trace for trace in self.traces if trace.get_type() == type]
+        """Returns all Sensors of a given `type'"""
+        return [trace for trace in self.traces \
+                    if trace.get_type() == type]
 
     def get_trace(self, sensor_name):
+        """Given the name of the sensor retrieve the SensorTrace
+        object"""
         for trace in self.traces:
             if trace.get_name().name == sensor_name:
                 return trace
 
     def get_sensor_names(self):
+        """Returns the names of all the sensors in the trace"""
         return [trace.get_name() for trace in self.traces]
+
 
 def get_datetime(year, month):
     return datetime(year, month, 1)
@@ -193,149 +275,5 @@ def get_datetime(year, month):
 def clean_name(name):
     return name.replace('_', '')
 
-def write_data_to_file(data, data_file, field_file):
-    f_fields = open(field_file, 'w')
-    f_fields.write('\n'.join([d.get_name().name for d in data]))
-    f_fields.close()
-    
-    f_data = open(data_file, 'w')
-    data_data = clustering.get_multid_data(data)
-    for entry in data_data:
-        f_data.write('\t'.join([str(x[index]) for x in entry]) + '\n')
-    f_data.close()
-
-    # data_data = [get_data(d) for d in data]
-    # x_vals, y_vals = clustering.interpolate(data_data, sampling_freq=3600)
-    # out_data = [x_vals]
-    # out_data.extend(y_vals)
-
-    # for index in range(len(out_data[0])):
-    #     found_nan = False
-    #     for x in out_data:
-    #         if isnan(x[index]):
-    #             found_nan = True
-    #             break
-    #     if found_nan:
-    #         continue
-        
-    #     f_data.write('\t'.join([str(x[index]) for x in out_data]) + '\n')
-    # f_data.close()
-
-def enum(data):
-    for i, x in enumerate(data):
-        print i, x.get_name().name
-
-def get_chiler_traces(trace):
-    temp_sensors = ['SODC1C1____SWT', 'SODC1C1__CDRWT', 'SODC1C2____SWT', 'SODC1C2__CDRWT', 'SODC1S_____SWT', 'SODC1S_____RWT', 'SODC2______SWT', 'SODC1C2____SWS']
-    kw_sensors = ['SODC1C1_____KW', 'SODC1C2_____KW']
-    return [t for t in trace.traces if t.get_name().name in temp_sensors], [t for t in trace.traces if t.get_name().name in kw_sensors]
-
-    
-if __name__ == '__main__':
-    training_data = {}
-    for month in range(MONTH_LIMIT):
-        start_limit = int(month * 30 * 24)
-        stop_limit = int((month + 1) * 30 * 24)
-        try:
-            get_anomolies(start_limit, stop_limit)
-        except:
-            break
-
-def get_anomolies(start_limit, stop_limit, limit_percentile=0.95, dist_threshold=0.7):
-    trace = SodaTrace('UCProject_UCB_SODAHALL', start_limit, stop_limit)
-    if len(trace.traces[-1].get_data().get_data()) == 0:
-        raise Exception("No more data")
-    art4 = [art for art in trace.traces if art.get_name().name.endswith('ART') and art.get_name().name.find('R4') != -1 and art.get_name().name != 'SODA1R438__ART']
-    multid_data, clust = clustering.hier_cluster(art4)
-    percentile = sort(clust[:,2])
-    percentile = percentile[int(len(percentile) * limit_percentile)]
-    d = clustering.hier.dendrogram(clust,
-                                   color_threshold = dist_threshold * percentile,
-                                   no_plot=True)
-    # c, l = clustering.kmeans_cluster(art4, 3)
-    
-    subplot(211)
-    for art in art4:
-        plot(clustering.get_clean(art.get_data().get_data()))
-
-    xlim(0, stop_limit - start_limit)
-        
-    subplot(212)
-    y_len = 1
-    for color in set(d['color_list']):
-        x_vals = array(d['leaves'])[find(array(d['color_list']) == color)]
-        y_vals = [y_len] * len(x_vals)
-        y_len += 1
-        scatter(x_vals, y_vals, c=color)
-    # scatter (range(len(l)), 1 + array(l))
-    xlim(0, stop_limit - start_limit)
-    ylim(0, y_len)
-    # ylim(-1, len(c) + 1)
-    
-def euclidean_dist(pt1, pt2):
-    total = 0
-    for index in range(len(pt1)):
-        total += (pt2[index] - pt1[index]) ** 2
-    return math.sqrt(total) 
-
-def plot_mean_anomoly(data, wnd_size=24):
-    clf()
-    subplot(411)
-    title('Data')
-    for x in data:
-        plot(clustering.get_clean(x.get_data().get_data()))
-    subplot(412)
-    cdv, odv, an = mean_anomoly(data, wnd_size)
-    scatter(an, [1] * len(an))
-    xlim(0, len(data[0].get_data().get_data()))
-    title('Anomolies')
-    subplot(413)
-    plot(cdv, label='Distance from Moving Window Mean')
-    legend()
-    subplot(414)
-    plot(odv, label='Distance from Overall Mean')
-    legend()
-
-def mean_anomoly(data, wnd_size):
-    overall_dist_vals = [0] * wnd_size
-    cur_dist_vals = [0] * wnd_size
-    anomolies = []
-    cur_win = []
-    cur_means = []
-    multid_data = clustering.get_multid_data(data)
-    total = array([0.0] * len(data))
-    start_time = time.time()
-    overall_mean = [average(clustering.get_clean(x.get_data().get_data())) for x in data]
-    print 'Time to calculate overall average', time.time() - start_time
-
-    for pt_index, cur_pt in enumerate(multid_data):
-        mean_pt = total / wnd_size
-        cur_means.append(mean_pt)
-        dist = map(lambda pt: euclidean_dist(mean_pt, pt),
-                   cur_win)
-        sigma = std(dist)
-        mean = average(dist)
-        if len(cur_win) >= wnd_size:
-            for index in range(len(total)):
-                total[index] -= cur_win[0][index]
-            del cur_win[0]
-        for index in range(len(cur_pt)):
-            total[index] += cur_pt[index]
-
-        cur_win.append(cur_pt)
-        # print 10 * '-'
-        # print 'Current Pt', cur_pt
-        # print 'Total', total
-        # print 'Mean Pt', mean_pt
-        # raw_input()
-        if len(cur_win) < wnd_size:
-            continue
-
-        cur_pt_dist = euclidean_dist(mean_pt, cur_pt)
-        cur_dist_vals.append(cur_pt_dist)
-        overall_dist_vals.append(euclidean_dist(overall_mean, cur_pt))
-
-        if cur_pt_dist < mean - 4 * sigma or \
-                cur_pt_dist > mean + 4 * sigma:
-            anomolies.append(pt_index)
-    return cur_dist_vals, overall_dist_vals, anomolies
+def get_clean(data):
+    return [x for x in data if not isnan(x)]

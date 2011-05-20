@@ -69,7 +69,7 @@ def hier_cluster(data):
     else:
         trans_data = get_multid_data(data)
     d = dist.pdist(trans_data)
-    return trans_data, fastcluster.linkage(d, method='centroid')
+    return fastcluster.linkage(d, method='centroid')
 
 def interpolate(signals, sampling_freq=1):
     start_time = min(signals[0][0])
