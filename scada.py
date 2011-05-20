@@ -17,6 +17,7 @@ import sys
 import os
 import time
 import math
+import re
 import datetime
 import clustering
 from pylab import *
@@ -146,6 +147,20 @@ class SensorTrace(object):
         log.warn('Empty load data is called. This should typically not happen')
         pass
 
+    def is_room(self) :
+        return re.match('^SODA\dR.*_+(ASO|ART|ARS|AGN|VAV|RVAV)$', self.get_name().name)
+
+    def is_in_room(self, room) :
+        target = '^SODA\dR' + room + '_+(ASO|ART|ARS|AGN|VAV|RVAV)$'
+        return re.match(target, self.get_name().name)
+
+    def get_summary(self):
+        vals = [data for data in self.trace_data.get_data() if data > 0]
+        if vals:
+            return {'min': amin(vals),'ave': mean(vals), 'max': amax(vals)}
+        else :
+            return {'min': nan,'ave': nan, 'max': nan}
+
 
 class TSDBTrace(SensorTrace):
     TIME_FORMAT = '%Y/%m/%d-%H:%M:%S'
@@ -267,6 +282,40 @@ class SCADATrace(object):
     def get_sensor_names(self):
         """Returns the names of all the sensors in the trace"""
         return [trace.get_name() for trace in self.traces]
+
+    def get_rooms(self):
+        room_map = {}
+        for sensor in self.traces:
+            if not sensor.is_room():
+                continue
+            room_no = sensor.get_name().room_no
+            sensor_type = sensor.get_name().type
+            if not room_map.has_key(room_no):
+                room_map[room] = Room(room_no)
+
+            if sensor_type == 'ARS':
+                room_map[room_no].ARS = sensor
+            elif sensor_type == 'ART':
+                room_map[room_no].ART = sensor
+            elif sensor_type == 'VAV':
+                room_map[room_no].VAV = sensor
+                room_map[room_no].reheat = False
+            elif sensor_type == 'RVAV':
+                room_map[room_no].VAV = sensor
+                room_map[room_no].reheat = True
+        return room_map
+
+
+class Room(object):
+    def __init__(self, room_no):
+        self.room_no = room_no
+        self.reheat = False
+        self.ART  = None                  # air temp
+        self.ARS  = None                  # set point
+        self.VAV  = None                  # variable air vol
+
+    def get_summary(self):
+        return self.ART.get_summary()
 
 
 def get_datetime(year, month):
