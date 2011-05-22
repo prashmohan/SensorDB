@@ -234,7 +234,7 @@ class FileTrace(SensorTrace):
 
 class SCADATrace(object):
     """Access SCADA Sensor data from various sources"""
-    def __init__(self, location='ec2-50-18-26-188.us-west-1.compute.amazonaws.com:4242', start_limit=None, stop_limit=None):
+    def __init__(self, location='prmohan-ec2.dyndns.org:4242', start_limit=None, stop_limit=None):
         self.traces = []
         self.start_limit = start_limit
         self.stop_limit = stop_limit
