@@ -1,0 +1,34 @@
+SensorDB is a collection of programs for easily accessing and working
+with sensor data collected from Buildings.
+
+
+Software Dependancies:
+         Python 2.6 (http://python.org/)
+         Matplotlib (http://matplotlib.sourceforge.net/)
+         Scientific Python (http://www.scipy.org/)
+         NumPy (http://numpy.scipy.org/)
+
+Optional Software Dependancies:
+         LibSVM (for classification)
+         FastCluster (an optimized clustering library. If not available will fallback on SciPy's clustering libraries)
+
+Additionally, I would also very highly recommend the IPython shell
+(http://ipython.scipy.org/) to which makes interactively playing with
+large data sets a breeze.
+
+As you might have noticed the libraries are written in
+Python. Currently there are 2 data sets:
+        a. SCADA Sensor data collected from Soda Hall
+        for the period from Nov 2008 -- May 2011.
+        b. SMap Sensor feeds (http://smap.cs.berkeley.edu/) collected
+        from various sensors deployed across Cory Hall and the CITRIS
+        building.
+
+The library has 2 data adapters TSDBTrace and FileTrace. The TSDBTrace
+adapter connects directly to the LoCal Sensor DB and retrieves data
+over the network. The FileTrace adapter on the other hand is optimized
+to retrieve data lazily from trace files on disk.
+
+The TSDB database is hosted on cluster running Hadoop's HDFS and uses
+the super awesome HBase columnar storage and the OpenTSDB middleware
+to store the sensor time series data.
