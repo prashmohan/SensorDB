@@ -171,11 +171,12 @@ class SensorTrace(object):
         return re.match(target, self.get_name().name)
 
     def get_summary(self):
+        self.get_data_tuples()
         vals = [data for data in self.trace_data.get_data() if data > 0]
         if vals:
-            return {'min': amin(vals),'ave': mean(vals), 'max': amax(vals)}
-        else :
-            return {'min': nan,'ave': nan, 'max': nan}
+            return {'min': amin(vals), 'ave': mean(vals), 'max': amax(vals)}
+        else:
+            return {'min': nan, 'ave': nan, 'max': nan}
 
 
 class TSDBTrace(SensorTrace):
@@ -191,6 +192,8 @@ class TSDBTrace(SensorTrace):
     def load_data(self, start_limit=None, stop_limit=None):
         if not start_limit:
             start_limit = self.start_limit
+        if not start_limit:
+            start_limit = datetime.datetime(2008, 11, 01)
         if not stop_limit:
             stop_limit = self.stop_limit
 
@@ -307,7 +310,7 @@ class SCADATrace(object):
             room_no = sensor.get_name().room_no
             sensor_type = sensor.get_name().type
             if not room_map.has_key(room_no):
-                room_map[room] = Room(room_no)
+                room_map[room_no] = Room(room_no)
 
             if sensor_type == 'ARS':
                 room_map[room_no].ARS = sensor

@@ -35,6 +35,7 @@ import time
 import datetime
 import logging
 import types
+import string
 
 log = logging.getLogger(__name__)
 
@@ -162,7 +163,17 @@ class Name(object):
         self.room_no = self.name[self.name.find('R') + 1 :
                                      self.name.find('_')]
         self.floor = self.room_no[0] if len(self.room_no) > 0 else 'None'
-        self.type = self.name[self.name.rfind('_') + 1 : ]
+        index = 1
+        start_index = self.name.rfind('_')
+        
+        if len(self.name) - start_index == 2:
+            # This is to handle the S_S and L_L names
+            start_index = self.name[ : start_index].rfind('_')
+
+        while self.name[start_index + index] in string.digits:
+            # This is to remove any numbers that occur before the sensor type
+            index += 1
+        self.type = self.name[start_index + index : ]
         self.prefix = self.name[ : self.name.find('R')]
         
     def __repr__(self):
