@@ -35,6 +35,7 @@ import time
 import math
 import re
 import datetime
+import collections
 import clustering
 from pylab import *
 from common import DataRecord, DataCollection, Name
@@ -302,12 +303,15 @@ class SCADATrace(object):
         """Returns the names of all the sensors in the trace"""
         return [trace.get_name() for trace in self.traces]
 
-    def get_rooms(self):
+    def get_rooms(self, floor_no=None):
+        """Get the room map of the building"""
         room_map = {}
         for sensor in self.traces:
             if not sensor.is_room():
                 continue
             room_no = sensor.get_name().room_no
+            if floor_no and sensor.get_name().floor != floor_no:
+                continue
             sensor_type = sensor.get_name().type
             if not room_map.has_key(room_no):
                 room_map[room_no] = Room(room_no)
@@ -324,10 +328,22 @@ class SCADATrace(object):
                 room_map[room_no].reheat = True
         return room_map
 
+    def get_floors(self):
+        """Retrieve the floor map of the building"""
+        floor_map = collections.defaultdict(dict)
+        room_map = self.get_rooms()
+
+        for room in room_map:
+            floor = room_map[room].get_name().floor
+            floor_map[floor][room] = room_map[room]
+            
+        return floor_map
+
 
 class Room(object):
     def __init__(self, room_no):
         self.room_no = room_no
+        self.name = Name('R' + room_no + '_ROOM')
         self.reheat = False
         self.ART  = None                  # air temp
         self.ARS  = None                  # set point
@@ -335,6 +351,9 @@ class Room(object):
 
     def get_summary(self):
         return self.ART.get_summary()
+
+    def get_name(self):
+        return self.name
 
 
 def get_datetime(year, month):
