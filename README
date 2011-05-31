@@ -1,7 +1,6 @@
 SensorDB is a collection of programs for easily accessing and working
 with sensor data collected from Buildings.
 
-
 Software Dependancies:
          Python 2.6 (http://python.org/)
          Matplotlib (http://matplotlib.sourceforge.net/)
@@ -10,7 +9,8 @@ Software Dependancies:
 
 Optional Software Dependancies:
          LibSVM (for classification)
-         FastCluster (an optimized clustering library. If not available will fallback on SciPy's clustering libraries)
+         FastCluster (an optimized clustering library. If not
+         available will fallback on SciPy's clustering libraries)
 
 Additionally, I would also very highly recommend the IPython shell
 (http://ipython.scipy.org/) to which makes interactively playing with
@@ -32,3 +32,7 @@ to retrieve data lazily from trace files on disk.
 The TSDB database is hosted on cluster running Hadoop's HDFS and uses
 the super awesome HBase columnar storage and the OpenTSDB middleware
 to store the sensor time series data.
+
+Contributors:
+        Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan), Author
+        
