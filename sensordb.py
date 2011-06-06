@@ -3,7 +3,7 @@
 Author:  prashmohan@gmail.com
          http://www.cs.berkeley.edu/~prmohan
         
-Copyright (c) 2011, Prashanth Mohan
+Copyright (c) 2011, University of California at Berkeley
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -32,12 +32,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import sys
 import os
 import time
-import math
 import re
 import datetime
 import collections
 import clustering
-from pylab import *
 from common import DataRecord, DataCollection, Name
 import httplib
 import logging

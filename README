@@ -34,5 +34,5 @@ the super awesome HBase columnar storage and the OpenTSDB middleware
 to store the sensor time series data.
 
 Contributors:
-        Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan), Author
-        LoCal Team (http://local.cs.berkeley.edu)        
+        Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan)
+        David Culler (http://www.cs.berkeley.edu/~culler)
