@@ -149,9 +149,9 @@ class SensorTrace(object):
         describe the subsection of the trace to operate on. If these
         options are not provided, then any arguments provided on
         object intialization will be used."""
-        
+        start_limit, stop_limit = self.get_limits(start_limit, stop_limit)
         data = self.load_data(start_limit, stop_limit)
-        self.trace_data = DataCollection(self.start_limit, self.stop_limit)
+        self.trace_data = DataCollection(start_limit, stop_limit)
         self.trace_data.append(data)
         return self.trace_data.get_data_tuples(start_limit, stop_limit)
 
@@ -177,6 +177,15 @@ class SensorTrace(object):
         else:
             return {'min': nan, 'ave': nan, 'max': nan}
 
+    def get_limits(self, start_limit, stop_limit):
+        if not start_limit:
+            start_limit = self.start_limit
+        if not start_limit:
+            start_limit = datetime.datetime(2008, 11, 01)
+        if not stop_limit:
+            stop_limit = self.stop_limit
+        return start_limit, stop_limit
+
 
 class TSDBTrace(SensorTrace):
     TIME_FORMAT = '%Y/%m/%d-%H:%M:%S'
@@ -184,24 +193,18 @@ class TSDBTrace(SensorTrace):
     def __init__(self, loc, sensor_name, start_limit=None, stop_limit=None):
         self.loc = loc
         super(TSDBTrace, self).__init__(sensor_name,
-                                          start_limit,
-                                          stop_limit)
+                                        start_limit,
+                                        stop_limit)
 
     
     def load_data(self, start_limit=None, stop_limit=None):
-        if not start_limit:
-            start_limit = self.start_limit
-        if not start_limit:
-            start_limit = datetime.datetime(2008, 11, 01)
-        if not stop_limit:
-            stop_limit = self.stop_limit
-
+        start_limit, stop_limit = self.get_limits(start_limit, stop_limit)
         if not start_limit:
             raise TSDBException("Starting time should be given")
-        
+
         request_string = '/q?start=' + start_limit.strftime(self.TIME_FORMAT)
         if stop_limit:
-            request_string += '&stop=' + stop_limit.strftime(self.TIME_FORMAT)
+            request_string += '&end=' + stop_limit.strftime(self.TIME_FORMAT)
         request_string += '&m=avg:SCADA.SODA.' + self.name
         request_string += '&ascii'
 
@@ -263,8 +266,9 @@ class SCADATrace(object):
             self.__file_trace_initialize(location)        
 
     def __tsdb_trace_initialize(self, location):
-        self.traces = [TSDBTrace(location, sensor_name) \
-                           for sensor_name in self.__get_tsdb_metrics(location)]
+        self.traces = [TSDBTrace(location, sensor_name, self.start_limit, \
+                                 self.stop_limit) \
+                       for sensor_name in self.__get_tsdb_metrics(location)]
         
     def __file_trace_initialize(self, directory):
         self.traces = [FileTrace(os.path.join(directory, sensor_name),
