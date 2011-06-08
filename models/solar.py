@@ -34,7 +34,7 @@ import pdb
 def radiation(day=False):
     """
     Return average amount of solar radiation falling on atmosphere
-    normal to the rays of the sun in W/m^2 on specified dnay of year If
+    normal to the rays of the sun in W/m^2 on specified day of year If
     no argument is provided, return the average 1367 W/m^2,
     """
     I0 = 1367

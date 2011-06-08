@@ -32,11 +32,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from pylab import *
 from scipy.cluster.vq import vq, kmeans2, whiten
 import scipy.spatial.distance as dist
-import scipy.cluster.hierarchy as hier
 import scipy.interpolate
 from time import mktime
-import fastcluster
 import types
+try:
+    import fastcluster as hier
+except:
+    import scipy.cluster.hierarchy as hier
 
 COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
 
