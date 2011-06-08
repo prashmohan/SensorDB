@@ -35,7 +35,6 @@ import time
 import re
 import datetime
 import collections
-import clustering
 from common import DataRecord, DataCollection, Name
 import httplib
 import logging
