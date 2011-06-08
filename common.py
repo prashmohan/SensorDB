@@ -98,8 +98,8 @@ class DataCollection(object):
         object intialization will be used."""
 
         start_index, stop_index = self.__get_start_stop_indexes(start_limit, stop_limit)
-        return [rec.ts for rec in self.records[start_index : stop_index]], \
-            [rec.data for rec in self.records[start_index : stop_index]]
+        return np.array([rec.ts for rec in self.records[start_index : stop_index]]), \
+            np.array([rec.data for rec in self.records[start_index : stop_index]])
             
 
     def get_data(self, start_limit=None, stop_limit=None):
@@ -111,7 +111,7 @@ class DataCollection(object):
         object intialization will be used."""
 
         start_index, stop_index = self.__get_start_stop_indexes(start_limit, stop_limit)
-        return [rec.data for rec in self.records[start_index : stop_index]]
+        return np.array([rec.data for rec in self.records[start_index : stop_index]])
 
     def get_ts(self, start_limit=None, stop_limit=None):
         """Retrieve timestamps from the data collection.
@@ -122,7 +122,7 @@ class DataCollection(object):
         object intialization will be used."""
         
         start_index, stop_index = self.__get_start_stop_indexes(start_limit, stop_limit)
-        return [rec.ts for rec in self.records[start_index : stop_index]]
+        return np.array([rec.ts for rec in self.records[start_index : stop_index]])
 
     def get_length(self):
         """Returns the length of the trace as a timedelta object"""
