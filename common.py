@@ -39,6 +39,18 @@ import string
 
 log = logging.getLogger(__name__)
 
+SENSOR_TYPES = {
+    'ART' : 'Area Room Temperature',
+    'ARS' : 'Area Set Point',
+    'VAV' : 'Variable Air Volume handler',
+    'CDRWT' : 'Return Water Temperature',
+    'CDSWT' : 'Supply Water Temperature',
+    'SWT' : 'Supply Water Temperature',
+    'RWT' : 'Return Water Temperature',
+    'S_S' : 'State Start/Stop',
+    'OAT' : 'Outside Air Temperature',
+    'ROOM' : 'Room'
+    }
 class DataRecord(object):
     """Python representation for each individual record in the Trace"""
     
@@ -177,7 +189,11 @@ class Name(object):
         self.prefix = self.name[ : self.name.find('R')]
         
     def __repr__(self):
-        return 'Type: ' + self.type + ', Room No: ' + self.room_no + ', Floor: '+ self.floor + ', Sensor Name: ' + self.name
+        return 'Type: ' + self.type + \
+            ', Room No: ' + self.room_no + \
+            ', Floor: ' + self.floor + \
+            ', Sensor Type: ' + SENSOR_TYPES[self.type] if SENSOR_TYPES.has_key(self.type) else 'Unknown' + \
+            ', Sensor Name: ' + self.name 
 
     def __str__(self):
         return repr(self)
