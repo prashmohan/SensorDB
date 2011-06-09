@@ -36,6 +36,7 @@ import datetime
 import logging
 import types
 import string
+import numpy as np
 
 log = logging.getLogger(__name__)
 
