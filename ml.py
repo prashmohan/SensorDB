@@ -3,7 +3,7 @@
 Author:  prashmohan@gmail.com
          http://www.cs.berkeley.edu/~prmohan
         
-Copyright (c) 2011, Prashanth Mohan
+Copyright (c) 2011, University of California at Berkeley
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
