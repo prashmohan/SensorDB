@@ -177,7 +177,7 @@ class Name(object):
         self.prefix = self.name[ : self.name.find('R')]
         
     def __repr__(self):
-        return 'Prefix: ' + self.prefix + ', Type: ' + self.type + ', Room No: ' + self.room_no + ', Floor: '+ self.floor + ', Full Name: ' + self.name
+        return 'Type: ' + self.type + ', Room No: ' + self.room_no + ', Floor: '+ self.floor + ', Sensor Name: ' + self.name
 
     def __str__(self):
         return repr(self)
