@@ -357,6 +357,12 @@ class Room(object):
     def get_name(self):
         return self.name
 
+    def __repr__(self):
+        return self.get_name()
+
+    def __str__(self):
+        return self.get_name()
+    
 
 def get_datetime(year, month):
     return datetime(year, month, 1)
