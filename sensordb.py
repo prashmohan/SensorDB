@@ -39,6 +39,7 @@ from common import DataRecord, DataCollection, Name
 import httplib
 import logging
 import logging.handlers
+import numpy as np
 
 # Log verbosely
 root_logger = logging.getLogger('')
@@ -172,9 +173,9 @@ class SensorTrace(object):
         self.get_data_tuples()
         vals = [data for data in self.trace_data.get_data() if data > 0]
         if vals:
-            return {'min': amin(vals), 'ave': mean(vals), 'max': amax(vals)}
+            return {'min': np.amin(vals), 'ave': np.mean(vals), 'max': np.amax(vals)}
         else:
-            return {'min': nan, 'ave': nan, 'max': nan}
+            return {'min': np.nan, 'ave': np.nan, 'max': np.nan}
 
     def get_limits(self, start_limit, stop_limit):
         if not start_limit:
