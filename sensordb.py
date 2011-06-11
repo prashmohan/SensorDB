@@ -215,8 +215,9 @@ class TSDBTrace(SensorTrace):
             raise TSDBException("Starting time should be given")
 
         request_string = '/q?start=' + start_limit.strftime(self.TIME_FORMAT)
-        if stop_limit:
-            request_string += '&end=' + stop_limit.strftime(self.TIME_FORMAT)
+        if not stop_limit:
+            stop_limit = datetime.datetime.now()
+        request_string += '&end=' + stop_limit.strftime(self.TIME_FORMAT)
         request_string += '&m=avg:' + self.prefix + '.' + self.name
         request_string += '&ascii'
 
