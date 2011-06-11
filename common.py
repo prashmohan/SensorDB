@@ -74,7 +74,7 @@ class DataRecord(object):
             return 1
 
     def __repr__(self):
-        return str(self.ts) + '\t' + self.data
+        return str(self.ts) + '\t' + str(self.data)
 
     def __str__(self):
         return repr(self)
