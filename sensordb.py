@@ -156,6 +156,7 @@ class SensorTrace(object):
         return self.trace_data.get_data_tuples(start_limit, stop_limit)
 
     def get_data_collection(self):
+        self.get_data_tuples()
         return self.trace_data
 
     def load_data(self, start_limit=None, stop_limit=None):
@@ -190,12 +191,23 @@ class SensorTrace(object):
 class TSDBTrace(SensorTrace):
     TIME_FORMAT = '%Y/%m/%d-%H:%M:%S'
     
-    def __init__(self, loc, sensor_name, start_limit=None, stop_limit=None):
+    def __init__(self, loc, sensor_name, start_limit=None, stop_limit=None, prefix='SCADA.SODA'):
+        self.prefix = prefix
         self.loc = loc
         super(TSDBTrace, self).__init__(sensor_name,
                                         start_limit,
                                         stop_limit)
-
+        
+    @staticmethod
+    def get_tsdb_metrics(location, prefix):
+        request_string = '/suggest?type=metrics&q=' + prefix
+        conn = httplib.HTTPConnection(location)
+        conn.request("GET", request_string)
+        response = conn.getresponse()
+        if response.status != 200:
+            raise TSDBException("Could not load Sensor Names.\nError: " + response.reason)
+        data = response.read()
+        return [sensor[sensor.rfind('.') + 1 : ] for sensor in eval(data)]
     
     def load_data(self, start_limit=None, stop_limit=None):
         start_limit, stop_limit = self.get_limits(start_limit, stop_limit)
@@ -205,7 +217,7 @@ class TSDBTrace(SensorTrace):
         request_string = '/q?start=' + start_limit.strftime(self.TIME_FORMAT)
         if stop_limit:
             request_string += '&end=' + stop_limit.strftime(self.TIME_FORMAT)
-        request_string += '&m=avg:SCADA.SODA.' + self.name
+        request_string += '&m=avg:' + self.prefix + '.' + self.name
         request_string += '&ascii'
 
         conn = httplib.HTTPConnection(self.loc)
@@ -253,13 +265,14 @@ class FileTrace(SensorTrace):
         return return_records
 
 
-class SCADATrace(object):
-    """Access SCADA Sensor data from various sources"""
-    def __init__(self, location='prmohan-ec2.dyndns.org:4242', start_limit=None, stop_limit=None):
+class TSTrace(object):
+    """Access TS data from various sources"""
+    def __init__(self, location='prmohan-ec2.dyndns.org:4242', start_limit=None, stop_limit=None, prefix='SCADA.SODA'):
         self.traces = []
         self.start_limit = start_limit
         self.stop_limit = stop_limit
-        
+        self.prefix = prefix
+
         if location.find('4242') != -1:
             self.__tsdb_trace_initialize(location)
         else:
@@ -267,23 +280,13 @@ class SCADATrace(object):
 
     def __tsdb_trace_initialize(self, location):
         self.traces = [TSDBTrace(location, sensor_name, self.start_limit, \
-                                 self.stop_limit) \
-                       for sensor_name in self.__get_tsdb_metrics(location)]
+                                 self.stop_limit, self.prefix) \
+                       for sensor_name in TSDBTrace.get_tsdb_metrics(location, self.prefix)]
         
     def __file_trace_initialize(self, directory):
         self.traces = [FileTrace(os.path.join(directory, sensor_name),
                                    self.start_limit, self.stop_limit) \
                            for sensor_name in os.listdir(directory)]
-
-    def __get_tsdb_metrics(self, location):
-        request_string = '/suggest?type=metrics&q=SCADA.SODA'
-        conn = httplib.HTTPConnection(location)
-        conn.request("GET", request_string)
-        response = conn.getresponse()
-        if response.status != 200:
-            raise TSDBException("Could not load Sensor Names.\nError: " + response.reason)
-        data = response.read()
-        return [sensor[sensor.rfind('.') + 1 : ] for sensor in eval(data)]
 
     def get_sensor_types(self):
         """Returns the different types of sensors in the Trace"""
@@ -291,6 +294,7 @@ class SCADATrace(object):
 
     def get_traces(self, type):
         """Returns all Sensors of a given `type'"""
+        # self.__tsdb_trace_initialize(self.location)
         return [trace for trace in self.traces \
                     if trace.get_type() == type]
 
@@ -340,6 +344,22 @@ class SCADATrace(object):
             floor_map[floor][room] = room_map[room]
             
         return floor_map
+
+
+class SCADATrace(TSTrace):
+    """Access SCADA Sensor data from various sources"""
+    def __init__(self, start_limit=None, stop_limit=None):
+        super(SCADATrace, self).__init__(start_limit=start_limit, \
+                                         stop_limit=stop_limit, \
+                                         prefix='SCADA.SODA')
+
+
+class EISRTrace(TSTrace):
+    """Access EISR Sensor data from various sources"""
+    def __init__(self, start_limit=None, stop_limit=None):
+        super(EISRTrace, self).__init__(start_limit=start_limit, \
+                                         stop_limit=stop_limit, \
+                                         prefix='EISR')
 
 
 class Room(object):
