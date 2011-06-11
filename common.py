@@ -193,7 +193,7 @@ class Name(object):
         return 'Type: ' + self.type + \
             ', Room No: ' + self.room_no + \
             ', Floor: ' + self.floor + \
-            ', Sensor Type: ' + SENSOR_TYPES[self.type] if SENSOR_TYPES.has_key(self.type) else 'Unknown' + \
+            ', Sensor Type: ' + (SENSOR_TYPES[self.type] if SENSOR_TYPES.has_key(self.type) else 'Unknown') + \
             ', Sensor Name: ' + self.name 
 
     def __str__(self):

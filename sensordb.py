@@ -227,8 +227,7 @@ class TSDBTrace(SensorTrace):
         if response.status != 200:
             raise TSDBException("Could not load Sensor Data: " + self.name + "\nError: " + response.reason)
         
-        return self.__parse_data(response.read())
-        
+        return self.__parse_data(response.read())        
 
     def __parse_data(self, data):
         return [DataRecord(line.split()[2], int(line.split()[1])) \
