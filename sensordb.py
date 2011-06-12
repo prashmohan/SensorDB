@@ -181,7 +181,7 @@ class SensorTrace(object):
         if not start_limit:
             start_limit = self.start_limit
         if not start_limit:
-            start_limit = datetime.datetime(2008, 11, 01)
+            start_limit = datetime.datetime(2011, 11, 01)
         if not stop_limit:
             stop_limit = self.stop_limit
         return start_limit, stop_limit
@@ -291,7 +291,7 @@ class TSTrace(object):
         """Returns the different types of sensors in the Trace"""
         return set([trace.get_type() for trace in self.traces])
 
-    def get_traces(self, type):
+    def get_traces_type(self, type):
         """Returns all Sensors of a given `type'"""
         # self.__tsdb_trace_initialize(self.location)
         return [trace for trace in self.traces \
