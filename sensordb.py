@@ -163,12 +163,11 @@ class SensorTrace(object):
         log.warn('Empty load data is called. This should typically not happen')
         pass
 
-    def is_room(self) :
-        return re.match('^SODA\dR.*_+(ASO|ART|ARS|AGN|VAV|RVAV)$', self.get_name().name)
-
-    def is_in_room(self, room) :
-        target = '^SODA\dR' + room + '_+(ASO|ART|ARS|AGN|VAV|RVAV)$'
-        return re.match(target, self.get_name().name)
+    def is_room(self, room=None):
+        """Checks whether the sensor is within a room or not"""
+        if room != None:
+            return self.get_name().is_in_room(room)
+        return self.get_name().is_room()
 
     def get_summary(self):
         self.get_data_tuples()

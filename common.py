@@ -37,6 +37,7 @@ import logging
 import types
 import string
 import numpy as np
+import re
 
 log = logging.getLogger(__name__)
 
@@ -190,11 +191,28 @@ class Name(object):
         self.prefix = self.name[ : self.name.find('R')]
         
     def __repr__(self):
+        if not self.is_room():
+            return 'Type: ' + self.type + \
+                ', Sensor Type: ' + (SENSOR_TYPES[self.type] \
+                                         if SENSOR_TYPES.has_key(self.type) \
+                                         else 'Unknown') + \
+                ', Sensor Name: ' + self.name
         return 'Type: ' + self.type + \
             ', Room No: ' + self.room_no + \
             ', Floor: ' + self.floor + \
-            ', Sensor Type: ' + (SENSOR_TYPES[self.type] if SENSOR_TYPES.has_key(self.type) else 'Unknown') + \
+            ', Sensor Type: ' + (SENSOR_TYPES[self.type] \
+                                     if SENSOR_TYPES.has_key(self.type) \
+                                     else 'Unknown') + \
             ', Sensor Name: ' + self.name 
 
     def __str__(self):
         return repr(self)
+
+    def is_room(self):
+        return re.match('^SODA\dR.*_+(ASO|ART|ARS|AGN|VAV|RVAV)$', self.name)
+
+    def is_in_room(self, room):
+        target = '^SODA\dR' + room + '_+(ASO|ART|ARS|AGN|VAV|RVAV)$'
+        return re.match(target, self.name)
+
+
