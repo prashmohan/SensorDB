@@ -181,7 +181,7 @@ class SensorTrace(object):
         if not start_limit:
             start_limit = self.start_limit
         if not start_limit:
-            start_limit = datetime.datetime(2011, 11, 01)
+            start_limit = datetime.datetime(2011, 1, 01)
         if not stop_limit:
             stop_limit = self.stop_limit
         return start_limit, stop_limit
