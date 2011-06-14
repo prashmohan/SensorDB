@@ -211,11 +211,17 @@ class TSDBTrace(SensorTrace):
     def load_data(self, start_limit=None, stop_limit=None):
         start_limit, stop_limit = self.get_limits(start_limit, stop_limit)
         if not start_limit:
-            raise TSDBException("Starting time should be given")
-
+            raise TSDBException("Starting time should be given")        
+        
         request_string = '/q?start=' + start_limit.strftime(self.TIME_FORMAT)
         if not stop_limit:
             stop_limit = datetime.datetime.now()
+
+        # FIXME: Adding constant 7 hours to overcome time zone delta
+        delta = datetime.datetime(2010, 1, 1, 8) - datetime.datetime(2010, 1, 1, 1)
+        start_limit += delta
+        stop_limit += delta
+        
         request_string += '&end=' + stop_limit.strftime(self.TIME_FORMAT)
         request_string += '&m=avg:' + self.prefix + '.' + self.name
         request_string += '&ascii'
