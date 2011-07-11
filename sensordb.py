@@ -206,7 +206,7 @@ class TSDBTrace(SensorTrace):
         if response.status != 200:
             raise TSDBException("Could not load Sensor Names.\nError: " + response.reason)
         data = response.read()
-        return [sensor[sensor.find('.') + 1 : ] for sensor in eval(data)]
+        return [sensor[sensor.rfind('.') + 1 : ] for sensor in eval(data)]
     
     def load_data(self, start_limit=None, stop_limit=None):
         start_limit, stop_limit = self.get_limits(start_limit, stop_limit)
